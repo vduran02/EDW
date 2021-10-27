@@ -64,11 +64,12 @@ claim_IP[,c("min_start","max_end")] <- claim_IP[, lapply(.SD, as.Date), .SDcols 
 
 ## if anything is within min&max date & max+1 day, count as part of visit, but exclude Home and IP - Post Acute
 require(data.table)
-claim_IP[order(prs_nat_key,min_start,max_end, new_pos),VisitID:=cumsum(!((min_start == data.table::shift(max_end,1, fill = FALSE) |min_start == data.table::shift(min_start,1, fill = FALSE) | min_start == data.table::shift(max_end+1,1, fill = FALSE))  & prs_nat_key == data.table::shift(prs_nat_key,1,fill = FALSE) & (new_pos != 'IP - Post Acute'  & new_pos != 'Home' & data.table::shift(new_pos,1,fill = FALSE) != 'IP - Post Acute' & data.table::shift(new_pos,1,fill = FALSE) != 'Home')))]
+claim_IP[order(prs_nat_key,min_start,max_end, new_pos),VisitID:=cumsum(!((min_start == data.table::shift(max_end,1, fill = FALSE) |min_start == data.table::shift(min_start,1, fill = FALSE) | min_start == data.table::shift(max_end+1,1, fill = FALSE))  & prs_nat_key == data.table::shift(prs_nat_key,1,fill = FALSE) & (new_pos != 'IP - Post Acute'  & new_pos != 'Home' & data.table::shift(new_pos,1,fill = FALSE) != 'IP - Post Acute' & data.table::shift(new_pos,1,fill = FALSE) != 'Home')
+                                                                         & (!(servicing_healthcare_prov_org_nat_key %like% "HOME ") & !(data.table::shift(servicing_healthcare_prov_org_nat_key,1,fill = FALSE) %like% 'HOME '))))]
 
 require(dplyr)
-## if an IP code is found within a visit, relabel entire visit to IP
-claim_IP[,update_pos := new_pos[new_pos=='IP'][1], VisitID][,final_pos := fifelse(is.na(update_pos), new_pos, update_pos), VisitID][,update_pos:=NULL]
+## if an IP code is found within a visit, relabel entire visit to IP (exclude lines where POS code is 21 but service provider has HOME in it)
+claim_IP[,update_pos := new_pos[new_pos=='IP' & !(servicing_healthcare_prov_org_nat_key %like% "HOME ")][1], VisitID][,final_pos := fifelse(is.na(update_pos)& !(servicing_healthcare_prov_org_nat_key %like% "HOME "), new_pos, fifelse(!(servicing_healthcare_prov_org_nat_key %like% "HOME "),update_pos,'Home')), VisitID][,update_pos:=NULL]
 
 ### get start and end date and length of stays
 Visits_IP <- claim_IP[final_pos == 'IP'][order(min_start),admit_dt := dplyr::first(min_start), by =VisitID][order(max_end),dist_dt := dplyr::last(max_end), by =VisitID][,los := dist_dt-admit_dt, by = VisitID][,days_diff := NULL][,dt_range := NULL][,new_pos:=NULL][,min_start:=NULL][,max_end:=NULL]
