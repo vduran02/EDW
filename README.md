@@ -1,6 +1,5 @@
 # EDW
-### Anything related to the IP Visit Logic
-
+### Setting up R environment
 Must select claim lines of interest.
 
 Sample code:
