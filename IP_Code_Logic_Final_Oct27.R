@@ -17,7 +17,7 @@ coco_claims %<>% mutate(new_pos = clm_pos_cln(pos_cd, pos_nm))
 names(coco_claims)
 claims_sample <- coco_claims %>% select(person_id,clm_nat_key,clm_line_item_activity_nat_key,prs_nat_key,servicing_healthcare_prov_org_nat_key,billing_healthcare_prov_org_nat_key,clm_id,
                                         serv_from_dt,serv_to_dt,clm_status_nm,pos_cd,pos_nm,diags,diag_1,procs,proc_1,revcode,revcode_1,billed_amt,net_paid_amt,ded_amt,copay_amt,coinsurance_amt, cov_amt,new_pos) %>%
-  filter(clm_status_nm != 'DENIED') #%>% mutate(diags = str_remove_all(diags, '(Diag [0-9]:)*'))  %>% separate(diags, c("Diag1","Diag2","Diag3","Diag4"), extra = "merge", fill = "left")
+  filter(clm_status_nm != 'DENIED') 
 
 ### turn dates into ymd type
 claims_sample %<>% 
