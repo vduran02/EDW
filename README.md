@@ -37,3 +37,5 @@ library(magrittr)
 library(lubridate)
 library(clipr)
 ```
+### IP Visit Logic
+Find claim lines that have a svc_to_dt - svc_from_dt > 0. Create a new table containing these dates along with prs_nat_key. Following this, drop rows containing same svc_frm_dt based on prs_nat_key. Afterwards, create two new columns min_start and max_end, based on the earliest svc_frm_dt and latest svc_to_dt that are in a continuous date range. Once this has been created, join this table onto the overall claims table. Any claim line that has a matching prs_nat_key and has svc_fm and svc_to dates landing within the min_start/max_end will have the join. Otherwise, min/max will equal svc_frm/svc_to. From then on, count any claims that are adjacent by date as a visit, excluding Home and SNFs. 
