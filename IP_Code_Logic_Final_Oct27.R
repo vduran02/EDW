@@ -49,10 +49,10 @@ claim_IP <- claims_sample[order(prs_nat_key,serv_from_dt,-serv_to_dt)][,identifi
 
 ##### join the date_new table onto the claims table with conditions
 claim_IP[date_new,`:=`(min_start=i.min_start,max_end=i.max_end, dt_range = i.day_diff), on = .(serv_from_dt >= min_start,
-                                                                                          serv_from_dt <= max_end,
-                                                                                          serv_to_dt >= min_start,
-                                                                                          serv_to_dt <= max_end,
-                                                                                          prs_nat_key == prs_nat_key)]
+                                                                                               serv_from_dt <= max_end,
+                                                                                               serv_to_dt >= min_start,
+                                                                                               serv_to_dt <= max_end,
+                                                                                               prs_nat_key == prs_nat_key)]
 
 
 
@@ -78,17 +78,26 @@ Visits_IP <- claim_IP[final_pos == 'IP'][order(min_start),admit_dt := dplyr::fir
 Visits_IP[, .(distinct_cnt = uniqueN(VisitID)), final_pos]
 
 ### label room and board
-Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1",revcode_1))),
+Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^20",revcode_1))),
                 room_board_type= fifelse(grepl("^10",revcode_1), 'All Inclusive',
-                fifelse(grepl("^11",revcode_1), 'Private',
-                fifelse(grepl("^12",revcode_1), 'Semi-Private Two Bed',
-                fifelse(grepl("^13",revcode_1), 'Semi-Private - Three and Four Beds',
-                fifelse(grepl("^14",revcode_1), 'Private (Deluxe)',
-                fifelse(grepl("^15",revcode_1), 'Ward',
-                fifelse(grepl("^16",revcode_1), 'Other',
-                fifelse(grepl("^17",revcode_1), 'Nursery',
-                fifelse(grepl("^18",revcode_1), 'LoA',
-                fifelse(grepl("^19",revcode_1), 'Subacute Care',NA_character_))))))))))), VisitID]
+                                         fifelse(grepl("^11",revcode_1), 'Private',
+                                                 fifelse(grepl("^12",revcode_1), 'Semi-Private Two Bed',
+                                                         fifelse(grepl("^13",revcode_1), 'Semi-Private - Three and Four Beds',
+                                                                 fifelse(grepl("^14",revcode_1), 'Private (Deluxe)',
+                                                                         fifelse(grepl("^15",revcode_1), 'Ward',
+                                                                                 fifelse(grepl("^16",revcode_1), 'Other',
+                                                                                         fifelse(grepl("^17",revcode_1), 'Nursery',
+                                                                                                 fifelse(grepl("^18",revcode_1), 'LoA',
+                                                                                                         fifelse(grepl("^19",revcode_1), 'Subacute Care',
+                                                                       fifelse(grepl("^200",revcode_1), 'ICU',
+                                                                               fifelse(grepl("^201",revcode_1), 'Surgical',
+                                                                                       fifelse(grepl("^202",revcode_1), 'Medical',
+                                                                                               fifelse(grepl("^203",revcode_1), 'Pediatric',
+                                                                                                       fifelse(grepl("^204",revcode_1), 'Psychiatric',
+                                                                                                               fifelse(grepl("^206",revcode_1), 'Post ICU',
+                                                                                                                       fifelse(grepl("^207",revcode_1), 'Burn Care',
+                                                                                                                               fifelse(grepl("^208",revcode_1), 'Trauma',
+                                                                                                                                       fifelse(grepl("^209",revcode_1), 'Other intensive care',NA_character_)))))))))))))))))))), VisitID]
 
 ### calculate room&board cost
 Visits_IP %<>% mutate(cost_room_board = ifelse(!is.na(room_board_type),rowSums(across(c(net_paid_amt,copay_amt,coinsurance_amt,ded_amt))), 0)) %>% setDT()
@@ -97,6 +106,7 @@ Visits_IP %<>% mutate(cost_room_board = ifelse(!is.na(room_board_type),rowSums(a
 IP_visit_summary <- Visits_IP[,lapply(.SD,sum),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'), .(person_id,final_pos,VisitID,admit_dt,dist_dt,los,cost_room_board,room_board_ind)][,.(total_allowed_amt = sum(.SD), total_net_paid = sum(net_paid_amt), total_room_board = sum(cost_room_board)),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,room_board_ind)][order(person_id,admit_dt,dist_dt)]
 
 write_clip(IP_visit_summary)
+write_clip(Visits_IP)
 
 
 
