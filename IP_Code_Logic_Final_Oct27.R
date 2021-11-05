@@ -78,7 +78,7 @@ Visits_IP <- claim_IP[final_pos == 'IP'][order(min_start),admit_dt := dplyr::fir
 Visits_IP[, .(distinct_cnt = uniqueN(VisitID)), final_pos]
 
 ### label room and board
-Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^20",revcode_1))),
+Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^2[0-1]",revcode_1))),
                 room_board_type= fifelse(grepl("^10",revcode_1), 'All Inclusive',
                                          fifelse(grepl("^11",revcode_1), 'Private',
                                                  fifelse(grepl("^12",revcode_1), 'Semi-Private Two Bed',
@@ -89,15 +89,21 @@ Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^20",revcode_1))),
                                                                                          fifelse(grepl("^17",revcode_1), 'Nursery',
                                                                                                  fifelse(grepl("^18",revcode_1), 'LoA',
                                                                                                          fifelse(grepl("^19",revcode_1), 'Subacute Care',
-                                                                       fifelse(grepl("^200",revcode_1), 'ICU',
-                                                                               fifelse(grepl("^201",revcode_1), 'Surgical',
-                                                                                       fifelse(grepl("^202",revcode_1), 'Medical',
-                                                                                               fifelse(grepl("^203",revcode_1), 'Pediatric',
-                                                                                                       fifelse(grepl("^204",revcode_1), 'Psychiatric',
-                                                                                                               fifelse(grepl("^206",revcode_1), 'Post ICU',
-                                                                                                                       fifelse(grepl("^207",revcode_1), 'Burn Care',
-                                                                                                                               fifelse(grepl("^208",revcode_1), 'Trauma',
-                                                                                                                                       fifelse(grepl("^209",revcode_1), 'Other intensive care',NA_character_)))))))))))))))))))), VisitID]
+                                                                                                                 fifelse(grepl("^200",revcode_1), 'ICU',
+                                                                                                                         fifelse(grepl("^201",revcode_1), 'Surgical',
+                                                                                                                                 fifelse(grepl("^202",revcode_1), 'Medical',
+                                                                                                                                         fifelse(grepl("^203",revcode_1), 'Pediatric',
+                                                                                                                                                 fifelse(grepl("^204",revcode_1), 'Psychiatric',
+                                                                                                                                                         fifelse(grepl("^206",revcode_1), 'Post ICU',
+                                                                                                                                                                 fifelse(grepl("^207",revcode_1), 'Burn Care',
+                                                                                                                                                                         fifelse(grepl("^208",revcode_1), 'Trauma',
+                                                                                                                                                                                 fifelse(grepl("^209",revcode_1), 'Other intensive care',
+                                                                                                                                                    fifelse(grepl("^210",revcode_1), 'CCU, General',
+                                                                                                                                                            fifelse(grepl("^211",revcode_1), 'CCU, Myocardial Infarction',
+                                                                                                                                                                    fifelse(grepl("^212",revcode_1), 'CCU, Pulmonary Care',
+                                                                                                                                                                            fifelse(grepl("^214",revcode_1), 'Post CCU',
+                                                                                                                                                                                    fifelse(grepl("^213",revcode_1), 'CCU, Heart Transplant',
+                                                                                                                                                                                    fifelse(grepl("^219",revcode_1), 'CCU, Other',NA_character_)))))))))))))))))))))))))), VisitID]
 
 ### calculate room&board cost
 Visits_IP %<>% mutate(cost_room_board = ifelse(!is.na(room_board_type),rowSums(across(c(net_paid_amt,copay_amt,coinsurance_amt,ded_amt))), 0)) %>% setDT()
