@@ -16,7 +16,7 @@ coco_claims %<>% mutate(new_pos = clm_pos_cln(pos_cd, pos_nm))
 ### select columns of interest and drop denied claims
 names(coco_claims)
 claims_sample <- coco_claims %>% select(person_id,clm_nat_key,clm_line_item_activity_nat_key,prs_nat_key,servicing_healthcare_prov_org_nat_key,billing_healthcare_prov_org_nat_key,clm_id,
-                                        serv_from_dt,serv_to_dt,clm_status_nm,pos_cd,pos_nm,diags,diag_1,procs,proc_1,revcode,revcode_1,billed_amt,net_paid_amt,ded_amt,copay_amt,coinsurance_amt, cov_amt,new_pos) %>%
+                                        serv_from_dt,serv_to_dt,clm_status_nm,pos_cd,pos_nm,discharge_typ_cd,diags,diag_1,procs,proc_1,revcode,revcode_1,billed_amt,net_paid_amt,ded_amt,copay_amt,coinsurance_amt, cov_amt,new_pos) %>%
   filter(clm_status_nm != 'DENIED') 
 
 ### turn dates into ymd type
@@ -78,7 +78,7 @@ Visits_IP <- claim_IP[final_pos == 'IP'][order(min_start),admit_dt := dplyr::fir
 Visits_IP[, .(distinct_cnt = uniqueN(VisitID)), final_pos]
 
 ### label room and board
-Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^2[0-1]",revcode_1))),
+Visits_IP[,`:=`(admission= +(any(grepl("^1|^2[0-1]|^36|^710",revcode_1))),
                 room_board_type= fifelse(grepl("^10",revcode_1), 'All Inclusive',
                                          fifelse(grepl("^11",revcode_1), 'Private',
                                                  fifelse(grepl("^12",revcode_1), 'Semi-Private Two Bed',
@@ -87,8 +87,8 @@ Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^2[0-1]",revcode_1))),
                                                                          fifelse(grepl("^15",revcode_1), 'Ward',
                                                                                  fifelse(grepl("^16",revcode_1), 'Other',
                                                                                          fifelse(grepl("^17",revcode_1), 'Nursery',
-                                                                                                 fifelse(grepl("^18",revcode_1), 'LoA',
-                                                                                                         fifelse(grepl("^19",revcode_1), 'Subacute Care',
+                                                                                                #IP Post Acute fifelse(grepl("^18",revcode_1), 'LoA',
+                                                                                                   #IP Post Acute      fifelse(grepl("^19",revcode_1), 'Subacute Care',
                                                                                                                  fifelse(grepl("^200",revcode_1), 'ICU',
                                                                                                                          fifelse(grepl("^201",revcode_1), 'Surgical',
                                                                                                                                  fifelse(grepl("^202",revcode_1), 'Medical',
@@ -103,13 +103,28 @@ Visits_IP[,`:=`(room_board_ind= +(any(grepl("^1|^2[0-1]",revcode_1))),
                                                                                                                                                                     fifelse(grepl("^212",revcode_1), 'CCU, Pulmonary Care',
                                                                                                                                                                             fifelse(grepl("^214",revcode_1), 'Post CCU',
                                                                                                                                                                                     fifelse(grepl("^213",revcode_1), 'CCU, Heart Transplant',
-                                                                                                                                                                                    fifelse(grepl("^219",revcode_1), 'CCU, Other',NA_character_)))))))))))))))))))))))))), VisitID]
+                                                                                                                                                                                    fifelse(grepl("^219",revcode_1), 'CCU, Other',
+                                                                                                                                                    fifelse(grepl("^360",revcode_1), 'OR Services',
+                                                                                                                                                            fifelse(grepl("^361",revcode_1), 'Minor Surgery',
+                                                                                                                                                                    fifelse(grepl("^362",revcode_1), 'Organ transplant other than kidney',
+                                                                                                                                                                            fifelse(grepl("^367",revcode_1), 'Kidney transplant',
+                                                                                                                                                                                    fifelse(grepl("^369",revcode_1), 'Other OR services',
+                                                                                                                                                                                            fifelse(grepl("^710",revcode_1), 'Recovery Room',
+                                                                                                                                                                                                    fifelse(grepl("^719",revcode_1), 'Other recovery room',NA_character_)))))))))))))))))))))))))))))),
+                transplant_flag = +any(grepl('^362|^367', revcode_1))), VisitID]
 
 ### calculate room&board cost
 Visits_IP %<>% mutate(cost_room_board = ifelse(!is.na(room_board_type),rowSums(across(c(net_paid_amt,copay_amt,coinsurance_amt,ded_amt))), 0)) %>% setDT()
 
+### assign discharge codes 
+setDT(discharge_codes_full)
+Visits_IP[discharge_codes_full, dstatus1 := i.dstatus_desc, on=c('discharge_typ_cd' = 'dstatus')][,dstatus:= dstatus[!is.na(dstatus)][1], VisitID][,dstatus1]
+
+
 ### get the visit summary with total_allowed and total_net_paid and total_room&board
-IP_visit_summary <- Visits_IP[,lapply(.SD,sum),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'), .(person_id,final_pos,VisitID,admit_dt,dist_dt,los,cost_room_board,room_board_ind)][,.(total_allowed_amt = sum(.SD), total_net_paid = sum(net_paid_amt), total_room_board = sum(cost_room_board)),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,room_board_ind)][order(person_id,admit_dt,dist_dt)]
+IP_visit_summary <- Visits_IP[,lapply(.SD,sum),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'), .(person_id,final_pos,VisitID,admit_dt,dist_dt,los,cost_room_board,admission,transplant_flag,dstatus)][,.(total_allowed_amt = sum(.SD), total_net_paid = sum(net_paid_amt)),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,admission,transplant_flag,dstatus)][order(person_id,admit_dt,dist_dt)]
+IP_room_board <- Visits_IP[,.(total_room_board = sum(cost_room_board)),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,admission,transplant_flag,dstatus)][order(person_id,admit_dt,dist_dt)]
+IP_visit_summary[IP_room_board, total_room_board := total_room_board,on=c('VisitID' = 'VisitID')]
 
 write_clip(IP_visit_summary)
 write_clip(Visits_IP)
