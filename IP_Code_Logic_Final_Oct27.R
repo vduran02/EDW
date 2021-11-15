@@ -125,6 +125,7 @@ Visits_IP[discharge_codes_full, dstatus1 := i.dstatus_desc, on=c('discharge_typ_
 IP_visit_summary <- Visits_IP[,lapply(.SD,sum),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'), .(person_id,final_pos,VisitID,admit_dt,dist_dt,los,cost_room_board,admission,transplant_flag,dstatus)][,.(total_allowed_amt = sum(.SD), total_net_paid = sum(net_paid_amt)),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,admission,transplant_flag,dstatus)][order(person_id,admit_dt,dist_dt)]
 IP_room_board <- Visits_IP[,.(total_room_board = sum(cost_room_board)),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,admission,transplant_flag,dstatus)][order(person_id,admit_dt,dist_dt)]
 IP_visit_summary[IP_room_board, total_room_board := total_room_board,on=c('VisitID' = 'VisitID')]
+IP_visit_summary$los <- as.numeric(IP_visit_summary$los)
 
 write_clip(IP_visit_summary)
 write_clip(Visits_IP)
