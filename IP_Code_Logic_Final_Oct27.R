@@ -118,8 +118,7 @@ Visits_IP %<>% mutate(cost_room_board = ifelse(!is.na(room_board_type),rowSums(a
 
 ### assign discharge codes 
 setDT(discharge_codes_full)
-Visits_IP[discharge_codes_full, dstatus1 := i.dstatus_desc, on=c('discharge_typ_cd' = 'dstatus')][,dstatus:= dstatus[!is.na(dstatus)][1], VisitID][,dstatus1]
-
+Visits_IP[discharge_codes_full, dstatus1 := i.dstatus_desc, on=c('discharge_typ_cd' = 'dstatus')][,dstatus:= dstatus1[!is.na(dstatus1)][1], VisitID][,dstatus1:= NULL]
 
 ### get the visit summary with total_allowed and total_net_paid and total_room&board
 IP_visit_summary <- Visits_IP[,lapply(.SD,sum),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'), .(person_id,final_pos,VisitID,admit_dt,dist_dt,los,cost_room_board,admission,transplant_flag,dstatus)][,.(total_allowed_amt = sum(.SD), total_net_paid = sum(net_paid_amt)),.SDcols=c('net_paid_amt','copay_amt','coinsurance_amt','ded_amt'),.(person_id,final_pos,VisitID,admit_dt,dist_dt,los,admission,transplant_flag,dstatus)][order(person_id,admit_dt,dist_dt)]
